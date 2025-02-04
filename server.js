@@ -1,56 +1,66 @@
-const express = require('express');
 const fs = require('fs');
+const http = require('http');
 const path = require('path');
-const app = express();
+const url = require('url');
+
 const PORT = 3000;
 
-// Middleware to serve static files
-app.use(express.static('public'));
+// Create and configure HTTP server to listen to requests
+const server = http.createServer((req, res) => {
+    const parsedUrl = url.parse(req.url, true);
 
-// Home route
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html')); //__dirname is the directory name of the current module i.e the folder where the js file is located
-});
+    // Set the file path for different routes
+    let filePath;
+    if (parsedUrl.pathname === '/') {
+        filePath = path.join(__dirname, 'index.html');
+    } else if (parsedUrl.pathname === '/menu') {
+        filePath = path.join(__dirname, 'routes/menu.txt');
+    } else if (parsedUrl.pathname === '/contacts') {
+        filePath = path.join(__dirname, 'routes/contacts.html');
+    } else if (parsedUrl.pathname === '/special') {
+        const specialType = parsedUrl.query.type;
+        const specialDish = parsedUrl.query.dish;
+        const specialFilePath = specialDish === '1' ? 
+            path.join(__dirname, 'routes/special-dish1.txt') :
+            specialDish === '2' ? 
+            path.join(__dirname, 'routes/special-dish2.txt') : null;
 
-// Menu route with content from external file
-app.get('/menu', (req, res) => {
-    fs.readFile(path.join(__dirname, 'routes/menu.txt'), 'utf8', (err, data) => { 
-        if (err) {
-            return res.status(500).send('Error retrieving menu.');
+        if (!specialFilePath) {
+            res.writeHead(400, { 'Content-Type': 'text/html' });
+            res.end('<h1>No special found for the given dish ID. Please use dish=1 or dish=2.</h1>');
+            return;
         }
-        res.send(`<pre>${data}</pre>`); //pre is an html tag used to define preformatted text
-    });
-});
 
-// Contact route that renders HTML directly
-app.get('/contacts', (req, res) => {
-    res.sendFile(path.join(__dirname, 'routes/contacts.html'));
-});
-
-// Special route that reads two query parameters
-app.get('/special', (req, res) => {
-    const specialType = req.query.type;
-    const specialDish = req.query.dish;
-
-    let specialFilePath;
-    if (specialDish === '1') {
-        specialFilePath = path.join(__dirname, 'routes/special-dish1.txt');
-    } else if (specialDish === '2') {
-        specialFilePath = path.join(__dirname, 'routes/special-dish2.txt');
+        fs.readFile(specialFilePath, 'utf8', (err, data) => {
+            if (err) {
+                res.writeHead(500, { 'Content-Type': 'text/plain' });
+                res.end('Error retrieving special dish.');
+                return;
+            }
+            res.writeHead(200, { 'Content-Type': 'text/html' });
+            res.end(`<h1>Special Type: ${specialType}</h1><p>${data}</p>`);
+        });
+        return; // Ensure no further processing takes place
     } else {
-        return res.send('<h1>No special found for the given dish ID. Please use dish=1 or dish=2.</h1>');
+        res.writeHead(404, { 'Content-Type': 'text/html' });
+        res.end('<h1>404 Not Found</h1>');
+        return; // Ensure no further processing takes place
     }
 
-    // Read specific special content based on the dish parameter
-    fs.readFile(specialFilePath, 'utf8', (err, data) => {
+    // For routes where we set a file path
+    fs.readFile(filePath, (err, data) => {
         if (err) {
-            return res.status(500).send('Error retrieving special dish.');
+            res.writeHead(404, { 'Content-Type': 'text/html' });
+            res.end('<h1>404 Not Found</h1>');
+            return;
         }
-        res.send(`<h1>Special Type: ${specialType}</h1><p>${data}</p>`);
+        const contentType = path.extname(filePath) === '.html' ? 'text/html' : 'text/plain';
+        res.writeHead(200, { 'Content-Type': contentType });
+        res.end(data);
     });
 });
 
 // Start the server
-app.listen(PORT, () => {
+server.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });
