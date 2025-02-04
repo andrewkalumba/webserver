@@ -9,7 +9,7 @@ const PORT = 3000;
 const server = http.createServer((req, res) => {
     const parsedUrl = url.parse(req.url, true);
 
-    // Set the file path for different routes
+    // Setting file path for different routes
     let filePath;
     if (parsedUrl.pathname === '/') {
         filePath = path.join(__dirname, 'index.html');
@@ -40,14 +40,14 @@ const server = http.createServer((req, res) => {
             res.writeHead(200, { 'Content-Type': 'text/html' });
             res.end(`<h1>Special Type: ${specialType}</h1><p>${data}</p>`);
         });
-        return; // Ensure no further processing takes place
+        return; // No further processing takes place
     } else {
         res.writeHead(404, { 'Content-Type': 'text/html' });
         res.end('<h1>404 Not Found</h1>');
-        return; // Ensure no further processing takes place
+        return; // No further processing takes place
     }
 
-    // For routes where we set a file path
+    // Routes where we set a file path
     fs.readFile(filePath, (err, data) => {
         if (err) {
             res.writeHead(404, { 'Content-Type': 'text/html' });
